@@ -4,6 +4,15 @@ importScripts(
   "utils/indexedDbExporter.js"
 );
 
+function download(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  chrome.downloads.download({
+    url: url,
+    filename: filename
+  });
+}
+
 chrome.runtime.onMessage.addListener(async (msg) => {
   if (msg.type === "SAVE_PROFILE") {
     const origin = new URL(msg.url).origin;
@@ -71,5 +80,68 @@ chrome.runtime.onMessage.addListener(async (msg) => {
     const storageState = msg.profile.storageState;
     const filename = `${(msg.profile.profileName || "profile").replace(/[^a-z0-9]/gi, '_')}_auth.json`;
     download(adaptForPlaywright(storageState), filename);
+  }
+
+  if (msg.type === "BACKUP_PROFILES") {
+    chrome.storage.local.get("domains", ({ domains = {} }) => {
+      const backup = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        profiles: domains
+      };
+      const filename = `profiles_backup_${new Date().toISOString().split('T')[0]}.json`;
+      download(backup, filename);
+    });
+  }
+
+  if (msg.type === "RESTORE_PROFILES") {
+    if (msg.data && msg.data.profiles) {
+      chrome.storage.local.set({ domains: msg.data.profiles }, () => {
+        console.log("Profiles restored successfully");
+      });
+    }
+  }
+
+  if (msg.type === "REFRESH_PROFILE") {
+    const targetOrigin = new URL(msg.profile.domain).origin;
+    const currentOrigin = new URL(msg.currentUrl).origin;
+    
+    let tab;
+    if (currentOrigin !== targetOrigin) {
+      tab = await chrome.tabs.create({ url: msg.profile.domain, active: true });
+      await new Promise(resolve => {
+        const listener = (tabId, changeInfo) => {
+          if (tabId === tab.id && changeInfo.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+      });
+    } else {
+      tab = (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
+    }
+
+    const storageState = await collectStorage(tab, msg.profile.domain);
+    const email = await detectEmail(tab);
+    const indexedDB = await exportIndexedDB(tab);
+
+    storageState.origins[0].indexedDB = indexedDB;
+
+    const updatedProfile = {
+      ...msg.profile,
+      email: email || msg.profile.email,
+      storageState,
+      updatedAt: new Date().toISOString()
+    };
+
+    chrome.storage.local.get("domains", ({ domains = {} }) => {
+      domains[targetOrigin] = domains[targetOrigin] || [];
+      const index = domains[targetOrigin].findIndex(p => p.profileName === msg.profile.profileName);
+      if (index !== -1) {
+        domains[targetOrigin][index] = updatedProfile;
+        chrome.storage.local.set({ domains });
+      }
+    });
   }
 });

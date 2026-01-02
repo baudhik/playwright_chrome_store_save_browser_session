@@ -25,6 +25,30 @@ document.getElementById("exportPlaywright").onclick = async () => {
   });
 };
 
+document.getElementById("backupProfiles").onclick = () => {
+  chrome.runtime.sendMessage({ type: "BACKUP_PROFILES" });
+};
+
+document.getElementById("restoreProfiles").onclick = () => {
+  document.getElementById("restoreFile").click();
+};
+
+document.getElementById("restoreFile").onchange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        chrome.runtime.sendMessage({ type: "RESTORE_PROFILES", data });
+      } catch (error) {
+        alert("Invalid backup file format");
+      }
+    };
+    reader.readAsText(file);
+  }
+};
+
 function renderProfiles(domains) {
   profilesDiv.innerHTML = "";
 
@@ -55,7 +79,21 @@ function renderProfiles(domains) {
         chrome.runtime.sendMessage({ type: "DOWNLOAD_PROFILE", profile });
       };
 
+      const refreshBtn = document.createElement("button");
+      refreshBtn.innerHTML = "&#x21BB;";
+      refreshBtn.className = "profile-refresh-btn";
+      refreshBtn.title = "Refresh Profile Data";
+      refreshBtn.onclick = async () => {
+        const tab = await getActiveTab();
+        chrome.runtime.sendMessage({
+          type: "REFRESH_PROFILE",
+          profile,
+          currentUrl: tab.url
+        });
+      };
+
       row.appendChild(loadBtn);
+      row.appendChild(refreshBtn);
       row.appendChild(downloadBtn);
       profilesDiv.appendChild(row);
     });

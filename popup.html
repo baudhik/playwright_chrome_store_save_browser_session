@@ -14,7 +14,10 @@
     <div class="controls">
       <input type="text" id="profileName" placeholder="Enter Profile Name (e.g., User A)" />
       <button id="saveProfile" class="btn btn-primary">Save / Update Session</button>
-      <button id="exportPlaywright" class="btn btn-secondary">Export JSON</button>
+      <button id="exportPlaywright" class="btn btn-secondary">Export session to playwright JSON</button>
+      <button id="backupProfiles" class="btn btn-backup">Backup All Profiles</button>
+      <input type="file" id="restoreFile" accept=".json" style="display: none;" />
+      <button id="restoreProfiles" class="btn btn-restore">Restore Profiles</button>
     </div>
     <div id="profiles" class="profiles-list"></div>
   </div>

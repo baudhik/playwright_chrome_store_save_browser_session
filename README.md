@@ -1,5 +1,9 @@
 A Chrome extension that captures, manages, and restores complete browser sessions including cookies, localStorage, sessionStorage, and IndexedDB data. Perfect for managing multiple user accounts and testing different authentication states! 🚀
 
+
+<img width="350" height="508" alt="image" src="https://github.com/user-attachments/assets/47885005-2548-4c49-b23c-bacbcc346437" />
+
+
 ✨ Features
 💾 Save Sessions: Capture complete browser state (cookies, storage, IndexedDB) with custom profile names
 
